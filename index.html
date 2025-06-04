@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mouse Treadmill Race</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://unpkg.com/@popperjs/core@2"></script>
+  <link href="https://unpkg.com/tippy.js@6/dist/tippy.css" rel="stylesheet"/>
+  <script src="https://unpkg.com/tippy.js@6"></script>
+</head>
+<body>
+  <header>
+    <h1>🐭 Mouse Treadmill Race 🏁</h1>
+  </header>
+
+  <main>
+    <!-- ──────── CONTROLS ──────── -->
+    <section id="controls">
+      <div class="action-row">
+        <button id="start-button" disabled>▶️ Start Race</button>
+        <button id="pause-button" disabled>⏸ Pause</button>
+      </div>
+    </section>
+
+    <!-- ──────── COUNTDOWN OVERLAY ──────── -->
+    <div id="countdown-overlay" class="hidden">
+      <span id="countdown-text">3</span>
+    </div>
+
+    <!-- ──────── RACETRACK ──────── -->
+    <div id="race-wrapper">
+      <div id="race-container"></div>
+    </div>
+
+    <!-- ──────── OVULATION TIMELINE ──────── -->
+    <section id="timeline-section">
+      <div id="timeline-bar">
+        <div id="timeline-progress"></div>
+      </div>
+      <div id="ovulation-wrapper">
+        <div id="ovulation-timeline"></div>
+      </div>
+    </section>
+
+    <!-- ──────── LIVE LEADERBOARDS ──────── -->
+    <section id="leaderboards">
+      <div id="female-leaderboard">
+        <h3>Female Rankings</h3>
+        <ol></ol>
+      </div>
+      <div id="male-leaderboard">
+        <h3>Male Rankings</h3>
+        <ol></ol>
+      </div>
+    </section>
+  </main>
+
+  <script src="global.js" type="module"></script>
+</body>
+</html>

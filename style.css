@@ -1,0 +1,273 @@
+/* ---------------------------------- */
+/*              GLOBAL                */
+/* ---------------------------------- */
+body {
+  margin: 0;
+  background: #ffffff;
+  font-family: 'Indie Flower', cursive, sans-serif;
+  color: #000;
+  transition: background 0.3s, color 0.3s;
+}
+body.lights-off {
+  background: #000; /* pure black when lights off */
+  color: #fff;
+}
+header {
+  background: #ffffff;
+  border-bottom: 3px solid #000;
+  text-align: center;
+  padding: 1em 0;
+}
+body.lights-off header {
+  background: #000;
+  border-color: #888;
+}
+header h1 {
+  margin: 0;
+  font-size: 2.4rem;
+}
+
+/* ---------------------------------- */
+/*             CONTROLS               */
+/* ---------------------------------- */
+#controls {
+  width: 100%;
+  padding: 0 1em;
+}
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  justify-content: center;
+  margin-bottom: 1em;
+}
+.action-row button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.5em 0.8em;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+body.lights-off .action-row button {
+  background: #222;
+  color: #fff;
+  border-color: #555;
+}
+.action-row button:hover:enabled {
+  background: #000;
+  color: #fff;
+}
+body.lights-off .action-row button:hover:enabled {
+  background: #444;
+  color: #fff;
+}
+.action-row button:disabled {
+  background: #f0f0f0;
+  color: #888;
+  border-color: #888;
+  cursor: not-allowed;
+}
+body.lights-off .action-row button:disabled {
+  background: #222;
+  color: #555;
+  border-color: #555;
+}
+
+/* ---------------------------------- */
+/*        COUNTDOWN OVERLAY           */
+/* ---------------------------------- */
+#countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+#countdown-overlay.hidden {
+  display: none;
+}
+#countdown-text {
+  font-size: 5rem;
+  color: #fff;
+  user-select: none;
+}
+
+/* ---------------------------------- */
+/*            MESSAGE OVERLAY         */
+/* ---------------------------------- */
+#message-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  color: #fff;
+  font-family: 'Indie Flower', cursive, sans-serif;
+  text-align: center;
+}
+#message-overlay.hidden {
+  display: none;
+}
+#message-overlay h2 {
+  margin: 0;
+  font-size: 2.5rem;
+}
+#message-overlay p {
+  margin-top: 0.5em;
+  font-size: 1.5rem;
+}
+
+/* ---------------------------------- */
+/*             RACETRACK              */
+/* ---------------------------------- */
+#race-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  overflow-x: auto;
+}
+#race-container {
+  position: relative;
+  height: 100vh;           /* full viewport height */
+  background: #fff;
+}
+body.lights-off #race-container {
+  background: #000;
+}
+
+/* each separator line (1px) spanning entire container width */
+.racer-track {
+  position: absolute;
+  left: 0;
+  height: 1px;
+  background: #888;
+}
+body.lights-off .racer-track {
+  background: #555;
+}
+
+/* each mouse: circle + label */
+.racer {
+  position: absolute;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+.mouse-body {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #000;
+  border-radius: 50%;
+}
+body.lights-off .mouse-body {
+  border-color: #ccc;
+}
+.mouse-female {
+  background: #D32F2F;
+}
+.mouse-male {
+  background: #1976D2;
+}
+.racer-label {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: inherit;
+}
+
+/* ---------------------------------- */
+/*           TIMELINE & OVULATION     */
+/* ---------------------------------- */
+/* Make timeline section span full width */
+#timeline-section {
+  width: 100%;
+  text-align: center;
+  margin: 1em 0;
+}
+#timeline-bar {
+  height: 10px;
+  background: #ddd;
+  position: relative;
+  margin-bottom: 0.6em;
+}
+body.lights-off #timeline-bar {
+  background: #555;
+}
+#timeline-progress {
+  height: 100%;
+  background: #000;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+/* wrapper around the full-width strip of 4 day-blocks */
+#ovulation-wrapper {
+  width: 100%;
+  overflow: hidden;
+}
+#ovulation-timeline {
+  display: flex;
+  width: 400%;       /* 4 blocks × 100% each */
+  height: 20px;
+}
+.ov-day {
+  flex: 1;           /* each block = 25% of wrapper */
+  height: 100%;
+}
+.phase-proestrus {
+  background: #fde0f0;
+}
+.phase-estrus {
+  background: #ff80c0;
+}
+.phase-metestrus {
+  background: #d0e0ff;
+}
+.phase-diestrus {
+  background: #d0ffd0;
+}
+
+/* ---------------------------------- */
+/*           LIVE LEADERBOARDS        */
+/* ---------------------------------- */
+#leaderboards {
+  display: flex;
+  gap: 2em;
+  justify-content: center;
+  margin: 2em 0;
+}
+#leaderboards > div {
+  width: 200px;
+  border: 2px solid #000;
+  background: #fff;
+  padding: 0.6em 1em;
+}
+body.lights-off #leaderboards > div {
+  border-color: #888;
+  background: #333;
+}
+#leaderboards h3 {
+  margin: 0 0 0.5em 0;
+  text-align: center;
+  font-size: 1.05rem;
+}
+#leaderboards ol {
+  margin: 0;
+  padding-left: 1.2em;
+}
