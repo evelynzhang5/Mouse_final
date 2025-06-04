@@ -1,44 +1,41 @@
 // ──────────────────────────────────────────────────────────────────────────
 // • First 8 female + first 8 male mice (16 total)
 // • Fixed 4-day race (no duration input) → 4 × 1440 = 5760 minutes
-// • Simulated pace: 1 minute per 50 ms tick → 1 day ≈ 72 s
+// • Simulated pace: 1 simulated minute per 50 ms tick → 1 day ≈ 72 s
 // • Separator lines span entire container width, drawn dynamically
 // • 3… 2… 1… GO! countdown before race
-// • Ovulation timeline: 4 blocks (each 100% of ov-wrapper) scrolling at 1× speed
+// • Ovulation timeline: 4 pink bars (each 25% width), labels below, dashed ticks at 12-hour marks
 // • Live bottom rankings updated each tick
-// • Pause button toggles correctly; manual scrolling does NOT auto‐pause
+// • Pause button toggles correctly; manual scrolling does NOT auto-pause
 // • Lights toggle every 12 hours (720 minutes), starting ON; full background updates immediately
-// • Pause once on first lights-off event, show message overlay
+// • Pause once on first lights-off event, show message overlay with current phase name
+// • Modal pop-up “🐭 Mouse Marathon! 🏁” on load with circular ▶️ button
 // ──────────────────────────────────────────────────────────────────────────
 
 const raceWrapper     = document.getElementById("race-wrapper");
 const raceContainer   = document.getElementById("race-container");
-const startBtn        = document.getElementById("start-button");
 const pauseBtn        = document.getElementById("pause-button");
-const countdownOverlay = document.getElementById("countdown-overlay");
-const countdownText    = document.getElementById("countdown-text");
 const femaleOL        = document.querySelector("#female-leaderboard ol");
 const maleOL          = document.querySelector("#male-leaderboard ol");
 const ovWrapper       = document.getElementById("ovulation-wrapper");
 const ovTimeline      = document.getElementById("ovulation-timeline");
 
-// Create and append the message overlay (hidden by default)
-const messageOverlay = document.createElement("div");
-messageOverlay.id = "message-overlay";
-messageOverlay.classList.add("hidden");
-messageOverlay.innerHTML = `
-  <h2>Woah, what just happened</h2>
-  <p>The lights have just turned off, write rest later</p>
-`;
-document.body.appendChild(messageOverlay);
+// Modal elements
+const splashModal     = document.getElementById("splash-modal");
+const modalStart      = document.getElementById("modal-start");
 
+// Countdown elements
+const countdownOverlay = document.getElementById("countdown-overlay");
+const countdownText    = document.getElementById("countdown-text");
+
+// Data structures
 const dataMap = {};    // { mouseID: [ { minute, activity, temperature }, … ] }
 let femaleIDs = [], maleIDs = [];
 let racers = [];       // [ { id, el, xPos, minuteIdx, finished } ]
 
 const MINUTES_PER_DAY  = 1440;
 const TOTAL_CYCLE_DAYS = 4;  // one full 4-day cycle
-const PHASES = ["proestrus","estrus","metestrus","diestrus"];
+const PHASES = ["Proestrus","Estrus","Metestrus","Diestrus"];
 
 // 4-day race → 4 × 1440 = 5760 simulated minutes
 const CHOSEN_TOTAL_MINUTES = 4 * MINUTES_PER_DAY;
@@ -66,10 +63,12 @@ Promise.all([
   buildData(mAct, mTemp, false);
   computeAverages();
   setupDefaultRace();       // first 8 of each gender
-  buildOvulationTimeline(); // 4 day blocks
+  buildOvulationTimeline(); // 4 pink bars + labels + ticks
   updateOvulationScroll(0);
   updateLights();           // set initial light state
-  startBtn.disabled = false; // enable Start once data is ready
+
+  // Enable the modal start button once data is ready
+  modalStart.disabled = false;
 });
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -102,7 +101,7 @@ function buildData(actCSV, tempCSV, isFemale) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 3) COMPUTE “AVG_FEMALE” & “AVG_MALE” (unused directly here, but kept)
+// 3) COMPUTE “AVG_FEMALE” & “AVG_MALE” (unused, kept for completeness)
 // ──────────────────────────────────────────────────────────────────────────
 function computeAverages() {
   const totalMinutes = dataMap[femaleIDs[0]].length; // 20160
@@ -151,29 +150,61 @@ function setupDefaultRace() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 5) BUILD OVULATION TIMELINE (4 blocks, each 100% of ov-wrapper)
+// 5) BUILD OVULATION TIMELINE (4 pink bars + labels + dashed ticks)
 // ──────────────────────────────────────────────────────────────────────────
 function buildOvulationTimeline() {
   ovTimeline.innerHTML = "";
+  const existingLabels = document.getElementById("ovulation-labels");
+  if (existingLabels) existingLabels.remove();
+
+  // Create 4 pink bars
   for (let d = 1; d <= 4; d++) {
-    const rect = document.createElement("div");
-    rect.className = `ov-day phase-${PHASES[(d - 1) % 4]}`;
-    ovTimeline.appendChild(rect);
+    const bar = document.createElement("div");
+    bar.className = "ov-day phase-" + PHASES[(d - 1) % 4].toLowerCase();
+    ovTimeline.appendChild(bar);
   }
+  // Add dashed ticks at every 12 hours (half-day intervals)
+  for (let i = 1; i < 8; i++) {
+    const tick = document.createElement("div");
+    tick.className = "ov-tick";
+    tick.style.left = `${i * 12.5}%`;
+    ovTimeline.appendChild(tick);
+  }
+
+  // Create labels row
+  const labelsRow = document.createElement("div");
+  labelsRow.id = "ovulation-labels";
+  for (let d = 1; d <= 4; d++) {
+    const lbl = document.createElement("div");
+    lbl.className = "ov-label";
+    lbl.textContent = PHASES[(d - 1) % 4];
+    labelsRow.appendChild(lbl);
+  }
+  ovWrapper.appendChild(labelsRow);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 6) START / PAUSE Logic with Countdown
+// 6) MODAL START BUTTON HANDLER → hide modal, show countdown, then race
 // ──────────────────────────────────────────────────────────────────────────
-startBtn.addEventListener("click", () => {
-  startBtn.disabled = true;
+modalStart.addEventListener("click", () => {
+  if (modalStart.disabled) return;
+
+  // 1) Hide the modal immediately
+  splashModal.style.display = "none";
+
+  // 2) Show countdown overlay right away
   countdownOverlay.classList.remove("hidden");
+
+  // 3) Run the 3…2…1…GO! countdown, then start the race
   runCountdown(3).then(() => {
     countdownOverlay.classList.add("hidden");
     beginRace();
   });
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// 7) PAUSE BUTTON LOGIC
+// ──────────────────────────────────────────────────────────────────────────
 pauseBtn.addEventListener("click", () => {
   if (isRunning) {
     clearInterval(raceTimer);
@@ -188,9 +219,9 @@ pauseBtn.addEventListener("click", () => {
 
 // Utility: countdown from N → “GO!” → resolve
 function runCountdown(startNumber) {
+  let count = startNumber;
+  countdownText.textContent = count;
   return new Promise(resolve => {
-    let count = startNumber;
-    countdownText.textContent = count;
     const interval = setInterval(() => {
       count--;
       if (count > 0) {
@@ -205,7 +236,9 @@ function runCountdown(startNumber) {
   });
 }
 
-// Called after countdown finishes
+// ──────────────────────────────────────────────────────────────────────────
+// 8) BEGIN RACE: reset state, build UI, enable pause button
+// ──────────────────────────────────────────────────────────────────────────
 function beginRace() {
   timeTick = 0;
   racers.forEach(r => {
@@ -219,15 +252,16 @@ function beginRace() {
   document.getElementById("timeline-progress").style.width = "0%";
   updateOvulationScroll(0);
 
-  // Ensure lights state is correct immediately
+  // Ensure correct lights state immediately
   updateLights();
 
-  // Enable Pause now that race has begun
+  // Enable Pause
   pauseBtn.disabled = false;
   pauseBtn.textContent = "⏸ Pause";
 
-  // Hide message overlay if somehow it was shown earlier
-  messageOverlay.classList.add("hidden");
+  // Hide message overlay if visible
+  const msg = document.getElementById("message-overlay");
+  if (msg) msg.classList.add("hidden");
   lightsOffHandled = false;
 
   isRunning = true;
@@ -235,7 +269,7 @@ function beginRace() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 7) BUILD TRACK LINES + RACER CIRCLES
+// 9) BUILD TRACK LINES + RACER CIRCLES
 // ──────────────────────────────────────────────────────────────────────────
 function setupRacers() {
   clearTrack();
@@ -252,14 +286,14 @@ function setupRacers() {
   racers.forEach((r, idx) => {
     const yPos = spacing * (idx + 1);
 
-    //  ● Separator line (1px tall) spanning full container width
+    // Separator line (1px tall) across full width
     const line = document.createElement("div");
     line.className = "racer-track";
     line.style.bottom = `${yPos}px`;
     line.style.width = `${totalW}px`;
     raceContainer.appendChild(line);
 
-    //  ● Racer (circle + label)
+    // Racer (circle + label)
     const wrapper = document.createElement("div");
     wrapper.className = "racer";
     wrapper.style.bottom = `${yPos - 17}px`; // center 34px circle
@@ -297,7 +331,7 @@ function setupRacers() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 8) CLEAR EXISTING TRACK LINES & RACERS
+// 10) CLEAR EXISTING TRACK LINES & RACERS
 // ──────────────────────────────────────────────────────────────────────────
 function clearTrack() {
   racers.forEach(r => {
@@ -317,11 +351,9 @@ function clearTrack() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 9) MAIN LOOP: Move each mouse 1 simulated minute per 50 ms tick
+// 11) MAIN LOOP: Move each mouse 1 simulated minute per 50 ms tick
 // ──────────────────────────────────────────────────────────────────────────
 function raceStep() {
-  const contW = raceContainer.clientWidth;
-
   racers.forEach(r => {
     if (r.minuteIdx >= CHOSEN_TOTAL_MINUTES || r.finished) return;
 
@@ -351,7 +383,7 @@ function raceStep() {
   const pct = Math.min((timeTick / CHOSEN_TOTAL_MINUTES) * 100, 100);
   document.getElementById("timeline-progress").style.width = `${pct}%`;
 
-  // Scroll ovulation timeline at 1× speed: (ovTimeline.scrollWidth - ovWrapper.clientWidth)
+  // Scroll ovulation timeline at 1× speed
   updateOvulationScroll(timeTick);
 
   // Live rankings: sort by xPos each tick
@@ -372,7 +404,7 @@ function raceStep() {
     }
   });
 
-  // Auto‐scroll to keep leader near center
+  // Auto-scroll to keep leader near center
   let maxX = 0;
   racers.forEach(r => {
     if (r.xPos > maxX) maxX = r.xPos;
@@ -389,7 +421,7 @@ function raceStep() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 10) UPDATE OVULATION TIMELINE SCROLL (1× speed)
+// 12) UPDATE OVULATION TIMELINE SCROLL (1× speed)
 // ──────────────────────────────────────────────────────────────────────────
 function updateOvulationScroll(minuteIndex) {
   const totalWidth = ovTimeline.scrollWidth - ovWrapper.clientWidth;
@@ -401,25 +433,53 @@ function updateOvulationScroll(minuteIndex) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// 11) UPDATE LIGHTS & PAUSE ON FIRST LIGHTS-OFF
+// 13) UPDATE LIGHTS & PAUSE ON FIRST LIGHTS-OFF
 // ──────────────────────────────────────────────────────────────────────────
+
+
 function updateLights() {
-  // Toggle every 12 hours = 720 simulated minutes
   const lightCycle = Math.floor(timeTick / 720) % 2;
+
   if (lightCycle === 1) {
     document.body.classList.add("lights-off");
 
-    // On first transition to lights-off, pause and show message
     if (!lightsOffHandled) {
       lightsOffHandled = true;
+
       // Pause race
       if (raceTimer) clearInterval(raceTimer);
       isRunning = false;
       pauseBtn.disabled = true;
-      // Show message overlay
-      messageOverlay.classList.remove("hidden");
+
+      // Create or reuse message overlay
+      let msg = document.getElementById("message-overlay");
+      if (!msg) {
+        msg = document.createElement("div");
+        msg.id = "message-overlay";
+        document.body.appendChild(msg);
+      }
+
+      // Directly wait 6 hours simulated (18 seconds real-time)
+      setTimeout(() => {
+        msg.innerHTML = `
+          <h2>🐭 Mouse activity slows during sleep 💤</h2>
+          <p>The lights are off.<br/>
+          Mice tend to rest more during this period.<br/>
+          Let’s continue the race!</p>
+        `;
+        msg.classList.remove("hidden");
+
+        // Resume race after showing message for 4s
+        setTimeout(() => {
+          msg.classList.add("hidden");
+          raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
+          isRunning = true;
+          pauseBtn.disabled = false;
+        }, 4000);
+      }, 1000); // 6 simulated hours = 360 ticks = 18 seconds real time
     }
   } else {
     document.body.classList.remove("lights-off");
   }
 }
+

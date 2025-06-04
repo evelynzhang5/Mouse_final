@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mouse Treadmill Race</title>
+  <title>Mouse Marathon!</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
@@ -15,15 +15,19 @@
   <script src="https://unpkg.com/tippy.js@6"></script>
 </head>
 <body>
-  <header>
-    <h1>🐭 Mouse Treadmill Race 🏁</h1>
-  </header>
 
-  <main>
+  <!-- ─────────── MODAL POP-UP ─────────── -->
+  <div id="splash-modal">
+    <h1>🐭 Mouse Marathon! 🏁</h1>
+    <button id="modal-start" disabled>▶️</button>
+  </div>
+
+  <!-- ─────────── MAIN CONTENT (VISIBLE BUT COVERED BY MODAL) ─────────── -->
+  <div id="main-content">
+
     <!-- ──────── CONTROLS ──────── -->
     <section id="controls">
       <div class="action-row">
-        <button id="start-button" disabled>▶️ Start Race</button>
         <button id="pause-button" disabled>⏸ Pause</button>
       </div>
     </section>
@@ -45,6 +49,7 @@
       </div>
       <div id="ovulation-wrapper">
         <div id="ovulation-timeline"></div>
+        <!-- Labels row will be injected by JS -->
       </div>
     </section>
 
@@ -59,7 +64,10 @@
         <ol></ol>
       </div>
     </section>
-  </main>
+  </div>
+
+  <!-- ─────────── MESSAGE OVERLAY (FIRST LIGHTS-OFF) ─────────── -->
+  <!-- Injected by JS -->
 
   <script src="global.js" type="module"></script>
 </body>

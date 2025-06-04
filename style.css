@@ -8,23 +8,84 @@ body {
   color: #000;
   transition: background 0.3s, color 0.3s;
 }
-body.lights-off {
-  background: #000; /* pure black when lights off */
-  color: #fff;
+.hidden {
+  display: none;
 }
-header {
-  background: #ffffff;
-  border-bottom: 3px solid #000;
-  text-align: center;
-  padding: 1em 0;
+
+/* ---------------------------------- */
+/*             LIGHTS OFF             */
+/* ---------------------------------- */
+body.lights-off {
+  background: #000;
+  color: #fff;
 }
 body.lights-off header {
   background: #000;
   border-color: #888;
 }
-header h1 {
-  margin: 0;
-  font-size: 2.4rem;
+body.lights-off .action-row button {
+  background: #222;
+  color: #fff;
+  border-color: #555;
+}
+body.lights-off .racer-track {
+  background: #555;
+}
+body.lights-off .mouse-body {
+  border-color: #ccc;
+}
+body.lights-off #timeline-bar {
+  background: #555;
+}
+body.lights-off .ov-tick {
+  border-color: #555;
+}
+body.lights-off #leaderboards > div {
+  border-color: #888;
+  background: #333;
+}
+
+/* ---------------------------------- */
+/*            MODAL POP-UP            */
+/* ---------------------------------- */
+#splash-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(220, 0, 60, 0.9); /* semi-opaque crimson */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+#splash-modal h1 {
+  font-size: 3rem;
+  color: #fff;
+  margin-bottom: 2rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+#modal-start {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: #FF4081; /* pink accent */
+  color: #fff;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+#modal-start:disabled {
+  background: #f698a3;
+  border-color: #f8f8f8;
+  cursor: not-allowed;
+}
+#modal-start:hover:enabled {
+  background: #E91E63;
+  transform: scale(1.05);
 }
 
 /* ---------------------------------- */
@@ -52,17 +113,8 @@ header h1 {
   border-radius: 4px;
   transition: background 0.2s, color 0.2s;
 }
-body.lights-off .action-row button {
-  background: #222;
-  color: #fff;
-  border-color: #555;
-}
 .action-row button:hover:enabled {
   background: #000;
-  color: #fff;
-}
-body.lights-off .action-row button:hover:enabled {
-  background: #444;
   color: #fff;
 }
 .action-row button:disabled {
@@ -70,11 +122,6 @@ body.lights-off .action-row button:hover:enabled {
   color: #888;
   border-color: #888;
   cursor: not-allowed;
-}
-body.lights-off .action-row button:disabled {
-  background: #222;
-  color: #555;
-  border-color: #555;
 }
 
 /* ---------------------------------- */
@@ -143,25 +190,15 @@ body.lights-off .action-row button:disabled {
 }
 #race-container {
   position: relative;
-  height: 100vh;           /* full viewport height */
+  height: 100vh;
   background: #fff;
 }
-body.lights-off #race-container {
-  background: #000;
-}
-
-/* each separator line (1px) spanning entire container width */
 .racer-track {
   position: absolute;
   left: 0;
   height: 1px;
   background: #888;
 }
-body.lights-off .racer-track {
-  background: #555;
-}
-
-/* each mouse: circle + label */
 .racer {
   position: absolute;
   display: flex;
@@ -175,9 +212,6 @@ body.lights-off .racer-track {
   height: 34px;
   border: 2px solid #000;
   border-radius: 50%;
-}
-body.lights-off .mouse-body {
-  border-color: #ccc;
 }
 .mouse-female {
   background: #D32F2F;
@@ -194,7 +228,6 @@ body.lights-off .mouse-body {
 /* ---------------------------------- */
 /*           TIMELINE & OVULATION     */
 /* ---------------------------------- */
-/* Make timeline section span full width */
 #timeline-section {
   width: 100%;
   text-align: center;
@@ -206,9 +239,6 @@ body.lights-off .mouse-body {
   position: relative;
   margin-bottom: 0.6em;
 }
-body.lights-off #timeline-bar {
-  background: #555;
-}
 #timeline-progress {
   height: 100%;
   background: #000;
@@ -216,31 +246,46 @@ body.lights-off #timeline-bar {
   transition: width 0.1s linear;
 }
 
-/* wrapper around the full-width strip of 4 day-blocks */
+/* Wrapper for the 4 pink bars */
 #ovulation-wrapper {
   width: 100%;
   overflow: hidden;
 }
 #ovulation-timeline {
   display: flex;
-  width: 400%;       /* 4 blocks × 100% each */
+  position: relative;   /* to position ticks absolutely */
+  width: 400%;          /* 4 bars × 100% each */
   height: 20px;
 }
 .ov-day {
-  flex: 1;           /* each block = 25% of wrapper */
-  height: 100%;
+  flex: 0 0 25%;
+  height: 20px;
 }
-.phase-proestrus {
-  background: #fde0f0;
+.phase-proestrus { background: #fde0f0; }
+.phase-estrus   { background: #ff80c0; }
+.phase-metestrus { background: #d0e0ff; }
+.phase-diestrus { background: #d0ffd0; }
+
+/* Dashed ticks at every 12-hour mark */
+.ov-tick {
+  position: absolute;
+  top: 0;
+  bottom: 20px;        /* ends at top of labels row */
+  border-left: 1px dashed #000;
 }
-.phase-estrus {
-  background: #ff80c0;
+
+/* Labels below the pink bars */
+#ovulation-labels {
+  display: flex;
+  width: 400%;         /* match the timeline width */
+  margin: 0 auto;
 }
-.phase-metestrus {
-  background: #d0e0ff;
-}
-.phase-diestrus {
-  background: #d0ffd0;
+.ov-label {
+  flex: 0 0 25%;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  margin-top: 0.2em;
 }
 
 /* ---------------------------------- */
@@ -257,10 +302,6 @@ body.lights-off #timeline-bar {
   border: 2px solid #000;
   background: #fff;
   padding: 0.6em 1em;
-}
-body.lights-off #leaderboards > div {
-  border-color: #888;
-  background: #333;
 }
 #leaderboards h3 {
   margin: 0 0 0.5em 0;
