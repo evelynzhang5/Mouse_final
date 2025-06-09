@@ -18,6 +18,8 @@ const countdownOverlay = document.getElementById("countdown-overlay");
 const countdownText    = document.getElementById("countdown-text");
 const barCanvas  = document.getElementById("bar-chart");
 const lineCanvas = document.getElementById("line-chart");
+const resetBtn = document.getElementById("reset-button");
+
 
 const nextBtn = document.getElementById("next-popup");
 const backBtn = document.getElementById("back-popup");
@@ -278,6 +280,58 @@ pauseBtn.addEventListener("click", () => {
     pauseBtn.textContent = "⏸ Pause";
   }
 });
+
+resetBtn.addEventListener("click", () => {
+  clearInterval(raceTimer);
+  isRunning = false;
+  userPaused = true;
+  popupIndex = -1;
+
+  // Reset simulation time and flags
+  timeTick = 0;
+  proestrusPopupShown = estrusPopupShown =
+    observationPopupShown = metestrusPopupShown = diestrusPopupShown = false;
+  lightsOffHandled = false;
+
+  // Hide popup overlay if showing
+  const overlay = document.getElementById("message-overlay");
+  if (overlay) overlay.classList.add("hidden");
+
+  // Update pause button
+  pauseBtn.textContent = "▶️ Resume";
+  pauseBtn.disabled = false;
+  document.getElementById("timeline-progress").style.width = "0%";
+
+  // Reset leaderboard
+  femaleOL.innerHTML = "";
+  maleOL.innerHTML = "";
+
+  // Reset mouse positions
+  racers.forEach(r => {
+    r.xPos = 0;
+    r.minuteIdx = 0;
+    if (r.el) r.el.style.left = "0px";
+  });
+
+  // Reset charts
+  if (lineChart) {
+    lineChart.data.labels = [];
+    lineChart.data.datasets.forEach(d => d.data = []);
+    lineChart.update();
+  }
+
+  if (barChart) {
+    barChart.data.datasets[0].data = [36, 36];  // or initial avg
+    barChart.data.datasets[0].backgroundColor = ['#ff9ccd', '#7ec6ff'];
+    barChart.update();
+  }
+
+  // Reset ovulation scroll and light state
+  updateOvulationScroll(0);
+  updateLights();
+});
+
+
 
 /* ------------------------------------------------------------------ */
 /* 7) beginRace                                                       */
