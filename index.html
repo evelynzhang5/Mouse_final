@@ -5,70 +5,68 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mouse Marathon!</title>
 
+  <!-- Fonts & CSS -->
   <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
 
+  <!-- Vendor JS -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
   <script src="https://unpkg.com/@popperjs/core@2"></script>
-  <link href="https://unpkg.com/tippy.js@6/dist/tippy.css" rel="stylesheet"/>
+  <link  href="https://unpkg.com/tippy.js@6/dist/tippy.css" rel="stylesheet"/>
   <script src="https://unpkg.com/tippy.js@6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body>
 
-  <!-- ─────────── MODAL POP-UP ─────────── -->
-  <div id="splash-modal">
-    <h1>🐭 Mouse Marathon! 🏁</h1>
+<body>
+  <!-- ─────────── SPLASH MODAL ─────────── -->
+  <div id="splash-modal" class="modal">
+    <h1>🐭 Mouse Marathon 🏁</h1>
     <button id="modal-start" disabled>▶️</button>
   </div>
 
-  <!-- ─────────── MAIN CONTENT (VISIBLE BUT COVERED BY MODAL) ─────────── -->
+  <!-- ─────────── MAIN CONTENT ─────────── -->
   <div id="main-content">
 
-    <!-- ──────── CONTROLS ──────── -->
+    <!-- CONTROLS -->
     <section id="controls">
       <div class="action-row">
+        <button id="back-popup">⏮ Back</button>
         <button id="pause-button" disabled>⏸ Pause</button>
+        <button id="next-popup">⏭ Next</button>
       </div>
+      
     </section>
 
-    <!-- ──────── COUNTDOWN OVERLAY ──────── -->
+    <!-- COUNTDOWN OVERLAY -->
     <div id="countdown-overlay" class="hidden">
       <span id="countdown-text">3</span>
     </div>
 
-    <!-- ──────── RACETRACK ──────── -->
+    <!-- RACETRACK -->
     <div id="race-wrapper">
       <div id="race-container"></div>
     </div>
 
-    <!-- ──────── OVULATION TIMELINE ──────── -->
+    <!-- OVULATION TIMELINE -->
     <section id="timeline-section">
-      <div id="timeline-bar">
-        <div id="timeline-progress"></div>
-      </div>
-      <div id="ovulation-wrapper">
-        <div id="ovulation-timeline"></div>
-        <!-- Labels row will be injected by JS -->
-      </div>
+      <div id="timeline-bar"><div id="timeline-progress"></div></div>
+      <div id="ovulation-wrapper"><div id="ovulation-timeline"></div></div>
     </section>
 
-    <!-- ──────── LIVE LEADERBOARDS ──────── -->
-    <section id="leaderboards">
-      <div id="female-leaderboard">
-        <h3>Female Rankings</h3>
-        <ol></ol>
+    <!-- LEADERBOARDS + TEMPERATURE CHART -->
+    <section id="info-panel">
+      <div id="leaderboards">
+        <div id="female-leaderboard"><h3>Female Rankings</h3><ol></ol></div>
+        <div id="male-leaderboard"><h3>Male Rankings</h3><ol></ol></div>
       </div>
-      <div id="male-leaderboard">
-        <h3>Male Rankings</h3>
-        <ol></ol>
-      </div>
+
+      <!-- Average core-temperature chart -->
+      <canvas id="temp-chart" width="220" height="140"></canvas>
     </section>
   </div>
 
-  <!-- ─────────── MESSAGE OVERLAY (FIRST LIGHTS-OFF) ─────────── -->
-  <!-- Injected by JS -->
-
+  <!-- Message overlay injected by JS -->
   <script src="global.js" type="module"></script>
 </body>
 </html>

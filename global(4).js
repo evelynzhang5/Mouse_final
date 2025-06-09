@@ -15,8 +15,6 @@ const modalStart    = document.getElementById("modal-start");
 const countdownOverlay = document.getElementById("countdown-overlay");
 const countdownText    = document.getElementById("countdown-text");
 const tempCanvas       = document.getElementById("temp-chart");
-const nextBtn = document.getElementById("next-popup");
-const backBtn = document.getElementById("back-popup");
 
 /* ---------- data structures ---------- */
 const dataMap = {};
@@ -46,29 +44,6 @@ let proestrusPopupShown=false, estrusPopupShown=false,
     observationPopupShown=false, metestrusPopupShown=false,
     diestrusPopupShown=false;
 
-let popupIndex = -1;
-const popupPhases = [
-  { min: PROESTRUS_POPUP_MIN, shown: () => proestrusPopupShown, set: v => proestrusPopupShown = v,
-    title: "🌸 Proestrus Phase 🌸",
-    body: "The estrous cycle is four phases repeating every 4–5 days. <strong>Proestrus</strong> (≈12 h) is the follicle-growth phase." },
-
-  { min: ESTRUS_POPUP_MIN, shown: () => estrusPopupShown, set: v => estrusPopupShown = v,
-    title: "🔥 Estrus Phase 🔥",
-    body: "Peak fertility: female mice become <em>much more active</em> during Estrus!" },
-
-  { min: OBSERVATION_POPUP_MIN, shown: () => observationPopupShown, set: v => observationPopupShown = v,
-    title: "👀 Observation 👀",
-    body: "By now you’ve likely noticed that female mice move less overall—except during Estrus, when they surge in activity. This pattern reflects natural-selection pressures." },
-
-  { min: METESTRUS_POPUP_MIN, shown: () => metestrusPopupShown, set: v => metestrusPopupShown = v,
-    title: "🌗 Metestrus Phase 🌗",
-    body: "Hormone levels fall; activity tapers as the cycle moves toward Diestrus." },
-
-  { min: DIESTRUS_POPUP_MIN, shown: () => diestrusPopupShown, set: v => diestrusPopupShown = v,
-    title: "🌙 Diestrus Phase 🌙",
-    body: "Final low-activity stage before the cycle restarts." }
-];
-
 /* run-state */
 let timeTick=0, raceTimer=null, isRunning=false, lightsOffHandled=false,
     currentTrackWidth=0;
@@ -92,25 +67,6 @@ Promise.all([
   updateOvulationScroll(0);
   updateLights();
   modalStart.disabled=false;
-});
-
-/* popup controls */
-nextBtn.addEventListener("click", () => {
-  if (popupIndex < popupPhases.length - 1) {
-    popupIndex++;
-    const phase = popupPhases[popupIndex];
-    phase.set(true);
-    showPopup(phase.title, phase.body);
-  }
-});
-
-backBtn.addEventListener("click", () => {
-  if (popupIndex > 0) {
-    popupIndex--;
-    const phase = popupPhases[popupIndex];
-    phase.set(true);
-    showPopup(phase.title, phase.body);
-  }
 });
 
 /* ------------------------------------------------------------------ */
@@ -401,15 +357,10 @@ function showPopup(title,body){
   if(!o){o=document.createElement("div");o.id="message-overlay";document.body.appendChild(o);}
   o.innerHTML=`<h2>${title}</h2><p>${body}<br><br><strong>Click anywhere to continue.</strong></p>`;
   o.classList.remove("hidden");
-  const resume = () => {
-    o.classList.add("hidden");
-    document.removeEventListener("click", resume);
-    raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
-    isRunning = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = "⏸ Pause";  // <-- ADD THIS LINE
+  const resume=()=>{
+    o.classList.add("hidden");document.removeEventListener("click",resume);
+    raceTimer=setInterval(raceStep,TICK_INTERVAL_MS); isRunning=true; pauseBtn.disabled=false;
   };
-  
   setTimeout(()=>document.addEventListener("click",resume),500);
 }
 
