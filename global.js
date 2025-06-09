@@ -119,8 +119,23 @@ backBtn.addEventListener("click", () => {
 });
 
 function jumpToPhase(index) {
+  const wasRunning = isRunning;
+  // clearInterval(raceTimer);
+  // isRunning = false;
+  // pauseBtn.disabled = false;
+
+// Set pause state so showPopup can respect it
+  userPaused = !wasRunning;
+
   const phase = popupPhases[index];
   timeTick = phase.min;
+  // Always pause when jumping to a phase
+  clearInterval(raceTimer);
+  isRunning = false;
+  pauseBtn.disabled = false;
+  pauseBtn.textContent = "▶️ Resume";
+  userPaused = true;  // Mark this as a manual pause
+
 
   // Reset all runners to correct position at that time
   racers.forEach(r => {
