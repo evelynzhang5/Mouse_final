@@ -16,7 +16,9 @@ const splashModal   = document.getElementById("splash-modal");
 const modalStart    = document.getElementById("modal-start");
 const countdownOverlay = document.getElementById("countdown-overlay");
 const countdownText    = document.getElementById("countdown-text");
-const tempCanvas       = document.getElementById("temp-chart");
+const barCanvas  = document.getElementById("bar-chart");
+const lineCanvas = document.getElementById("line-chart");
+
 const nextBtn = document.getElementById("next-popup");
 const backBtn = document.getElementById("back-popup");
 
@@ -80,6 +82,8 @@ let userPaused = false;
 
 /* Chart.js */
 let tempCtx=null, tempChart=null;
+let barChart = null;
+let lineChart = null;
 
 /* ──────────────────────────────────────────────────────────────────────────
    1) LOAD CSVs
@@ -264,25 +268,67 @@ pauseBtn.addEventListener("click", () => {
 /* 7) beginRace                                                       */
 /* ------------------------------------------------------------------ */
 function beginRace(){
-  /* canvas ctx & chart */
-  if(!tempCtx) tempCtx=tempCanvas.getContext("2d");
-  if(tempChart) tempChart.destroy();
-  tempChart=new Chart(tempCtx,{
-    type:'bar',
-    data:{
-      labels:['Female','Male'],
-      datasets:[{
-        backgroundColor:['#ff9ccd','#7ec6ff'],  // night shades
-        borderWidth:0,
-        data:[36,36]
-      }]
-    },
-    options:{
-      animation:false,
-      scales:{y:{min:30,max:40,title:{display:true,text:'°C'}}},
-      plugins:{legend:{display:false}}
+
+  const barCtx  = document.getElementById("bar-chart").getContext("2d");
+const lineCtx = document.getElementById("line-chart").getContext("2d");
+
+if (barChart) barChart.destroy();
+if (lineChart) lineChart.destroy();
+
+barChart = new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Female', 'Male'],
+    datasets: [{
+      label: 'Avg Temp (Bar)',
+      backgroundColor: ['#ff9ccd', '#7ec6ff'],
+      data: [36, 36],
+    }]
+  },
+  options: {
+    animation: false,
+    scales: { y: { min: 30, max: 40, title: { display: true, text: '°C' } } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+lineChart = new Chart(lineCtx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: 'Female Avg Temp',
+        data: [],
+        borderColor: '#ff80c0',
+        fill: false,
+        tension: 0.2
+      },
+      {
+        label: 'Male Avg Temp',
+        data: [],
+        borderColor: '#7ec6ff',
+        fill: false,
+        tension: 0.2
+      }
+    ]
+  },
+  options: {
+    animation: false,
+    scales: {
+      y: {
+        min: 30,
+        max: 40,
+        title: { display: true, text: 'Temperature (°C)' }
+      },
+      x: {
+        title: { display: true, text: 'Minute' }
+      }
     }
-  });
+  }
+});
+
+
 
   /* reset flags/state */
   timeTick=0;
@@ -369,84 +415,99 @@ function ensureTrackWidth(minX){
   laneLines.forEach(l=>{l.style.width=`${currentTrackWidth}px`;});
 }
 
-function raceStep(){
-  /* move each mouse one simulated minute --------------------------- */
-  racers.forEach(r=>{
-    if(r.minuteIdx>=CHOSEN_TOTAL_MINUTES) return;
-    const idx=Math.floor(r.minuteIdx);
-    const p=dataMap[r.id][idx]; if(!p) return;
-    const v=p.activity*PIXELS_PER_MIN;
-    r.xPos+=v*SIM_MINUTES_PER_TICK;
-    r.minuteIdx+=SIM_MINUTES_PER_TICK;
-    anime({targets:r.el,left:`${r.xPos}px`,duration:45,easing:"linear"});
+function raceStep() {
+  // Move each mouse one simulated minute
+  racers.forEach(r => {
+    if (r.minuteIdx >= CHOSEN_TOTAL_MINUTES) return;
+    const idx = Math.floor(r.minuteIdx);
+    const p = dataMap[r.id][idx]; if (!p) return;
+    const v = p.activity * PIXELS_PER_MIN;
+    r.xPos += v * SIM_MINUTES_PER_TICK;
+    r.minuteIdx += SIM_MINUTES_PER_TICK;
+    anime({ targets: r.el, left: `${r.xPos}px`, duration: 45, easing: "linear" });
   });
-  timeTick+=SIM_MINUTES_PER_TICK;
+  timeTick += SIM_MINUTES_PER_TICK;
 
-  /* update lights, progress bar, ovulation scroll ------------------ */
+  // Update lights, progress bar, ovulation scroll
   updateLights();
-  document.getElementById("timeline-progress").style.width=
-      `${Math.min(timeTick/CHOSEN_TOTAL_MINUTES*100,100)}%`;
+  document.getElementById("timeline-progress").style.width =
+    `${Math.min(timeTick / CHOSEN_TOTAL_MINUTES * 100, 100)}%`;
   updateOvulationScroll(timeTick);
 
-  /* live rankings --------------------------------------------------- */
-  const sorted = racers.slice().sort((a,b)=>b.xPos-a.xPos);
-  femaleOL.innerHTML=""; maleOL.innerHTML="";
-  sorted.forEach(r=>{
-    const li=document.createElement("li"); li.textContent=r.id;
-    (femaleIDs.includes(r.id)?femaleOL:maleOL).appendChild(li);
+  // Live rankings
+  const sorted = racers.slice().sort((a, b) => b.xPos - a.xPos);
+  femaleOL.innerHTML = "";
+  maleOL.innerHTML = "";
+  sorted.forEach(r => {
+    const li = document.createElement("li");
+    li.textContent = r.id;
+    (femaleIDs.includes(r.id) ? femaleOL : maleOL).appendChild(li);
   });
 
-  /* auto-scroll view ------------------------------------------------ */
-  const avgX=racers.reduce((s,r)=>s+r.xPos,0)/racers.length;
-  raceWrapper.scrollLeft=Math.max(0,avgX-raceWrapper.clientWidth/2);
-  ensureTrackWidth(avgX+raceWrapper.clientWidth);
+  // Auto-scroll
+  const avgX = racers.reduce((s, r) => s + r.xPos, 0) / racers.length;
+  raceWrapper.scrollLeft = Math.max(0, avgX - raceWrapper.clientWidth / 2);
+  ensureTrackWidth(avgX + raceWrapper.clientWidth);
 
-  /* ---- live average-temperature bars ----------------------------- */
-  const mIndex=Math.min(Math.floor(timeTick),dataMap[femaleIDs[0]].length-1);
-  const femTemps=femaleIDs.map(id=>dataMap[id][mIndex].temperature).filter(v=>!isNaN(v));
-  const maleTemps=maleIDs.map(id=>dataMap[id][mIndex].temperature).filter(v=>!isNaN(v));
-  tempChart.data.datasets[0].data=[
-    femTemps.reduce((s,v)=>s+v,0)/femTemps.length,
-    maleTemps.reduce((s,v)=>s+v,0)/maleTemps.length
+  // Temperature data
+  const mIndex = Math.min(Math.floor(timeTick), dataMap[femaleIDs[0]].length - 1);
+  const femTemps = femaleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
+  const maleTemps = maleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
+  const femAvg = femTemps.length ? femTemps.reduce((s, v) => s + v, 0) / femTemps.length : 0;
+  const maleAvg = maleTemps.length ? maleTemps.reduce((s, v) => s + v, 0) / maleTemps.length : 0;
+
+  
+  barChart.data.datasets[0].data = [
+    femTemps.reduce((s, v) => s + v, 0) / femTemps.length,
+    maleTemps.reduce((s, v) => s + v, 0) / maleTemps.length
   ];
-  tempChart.update('none');
+  barChart.update('none');
 
-  /* ---------- pop-ups --------------------------------------------- */
-  if(!proestrusPopupShown && timeTick>=PROESTRUS_POPUP_MIN){
-    proestrusPopupShown=true;
+
+  lineChart.data.labels.push(timeTick);
+  lineChart.data.datasets[0].data.push(femAvg);  // Female
+  lineChart.data.datasets[1].data.push(maleAvg); // Male
+  lineChart.update('none');
+  
+  // Pop-ups
+  if (!proestrusPopupShown && timeTick >= PROESTRUS_POPUP_MIN) {
+    proestrusPopupShown = true;
     showPopup("🌸 Proestrus Phase 🌸",
-      "The estrous cycle is four phases repeating every 4–5 days. "+
+      "The estrous cycle is four phases repeating every 4–5 days. " +
       "<strong>Proestrus</strong> (≈12 h) is the follicle-growth phase.");
   }
-  if(!estrusPopupShown && timeTick>=ESTRUS_POPUP_MIN){
-    estrusPopupShown=true;
+  if (!estrusPopupShown && timeTick >= ESTRUS_POPUP_MIN) {
+    estrusPopupShown = true;
     showPopup("🔥 Estrus Phase 🔥",
       "Peak fertility: female mice become <em>much more active</em> during Estrus!");
   }
-  if(!observationPopupShown && timeTick>=OBSERVATION_POPUP_MIN){
-    observationPopupShown=true;
+  if (!observationPopupShown && timeTick >= OBSERVATION_POPUP_MIN) {
+    observationPopupShown = true;
     showPopup("👀 Observation 👀",
-      "By now you’ve likely noticed that female mice move less overall—"+
-      "except during Estrus, when they surge in activity. "+
+      "By now you’ve likely noticed that female mice move less overall—" +
+      "except during Estrus, when they surge in activity. " +
       "This pattern reflects natural-selection pressures.");
   }
-  if(!metestrusPopupShown && timeTick>=METESTRUS_POPUP_MIN){
-    metestrusPopupShown=true;
+  if (!metestrusPopupShown && timeTick >= METESTRUS_POPUP_MIN) {
+    metestrusPopupShown = true;
     showPopup("🌗 Metestrus Phase 🌗",
       "Hormone levels fall; activity tapers as the cycle moves toward Diestrus.");
   }
-  if(!diestrusPopupShown && timeTick>=DIESTRUS_POPUP_MIN){
-    diestrusPopupShown=true;
+  if (!diestrusPopupShown && timeTick >= DIESTRUS_POPUP_MIN) {
+    diestrusPopupShown = true;
     showPopup("🌙 Diestrus Phase 🌙",
       "Final low-activity stage before the cycle restarts.");
   }
 
-  /* finish flag ----------------------------------------------------- */
-  if(timeTick>=CHOSEN_TOTAL_MINUTES){
-    clearInterval(raceTimer); isRunning=false; pauseBtn.disabled=true;
+  // Finish
+  if (timeTick >= CHOSEN_TOTAL_MINUTES) {
+    clearInterval(raceTimer);
+    isRunning = false;
+    pauseBtn.disabled = true;
     showFinishPopup(sorted);
   }
 }
+
 
 /* ------------------------------------------------------------------ */
 /* 10) pop-up helpers                                                 */
