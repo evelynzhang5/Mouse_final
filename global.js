@@ -1,3 +1,5 @@
+
+
 // ──────────────────────────────────────────────────────────────────────────
 // • 16 racers, 4-day race, live avg-temperature bar chart
 // ──────────────────────────────────────────────────────────────────────────
@@ -73,6 +75,9 @@ const popupPhases = [
 let timeTick=0, raceTimer=null, isRunning=false, lightsOffHandled=false,
     currentTrackWidth=0;
 
+let userPaused = false;
+
+
 /* Chart.js */
 let tempCtx=null, tempChart=null;
 
@@ -98,20 +103,64 @@ Promise.all([
 nextBtn.addEventListener("click", () => {
   if (popupIndex < popupPhases.length - 1) {
     popupIndex++;
-    const phase = popupPhases[popupIndex];
-    phase.set(true);
-    showPopup(phase.title, phase.body);
+    jumpToPhase(popupIndex);
   }
 });
 
 backBtn.addEventListener("click", () => {
   if (popupIndex > 0) {
     popupIndex--;
-    const phase = popupPhases[popupIndex];
-    phase.set(true);
-    showPopup(phase.title, phase.body);
+    jumpToPhase(popupIndex);
   }
 });
+
+function jumpToPhase(index) {
+  const phase = popupPhases[index];
+  timeTick = phase.min;
+
+  // Reset all runners to correct position at that time
+  racers.forEach(r => {
+    const s = dataMap[r.id];
+    r.minuteIdx = timeTick;
+    r.xPos = 0;
+    for (let i = 0; i < timeTick; i++) {
+      const p = s[i];
+      if (!p) break;
+      r.xPos += p.activity * PIXELS_PER_MIN * SIM_MINUTES_PER_TICK;
+    }
+    r.el.style.left = `${r.xPos}px`;
+  });
+
+  // Mark popup as shown and display it
+  phase.set(true);
+  showPopup(phase.title, phase.body);
+
+  // Update UI elements
+  updateLights();
+  updateOvulationScroll(timeTick);
+  document.getElementById("timeline-progress").style.width =
+    `${Math.min(timeTick / CHOSEN_TOTAL_MINUTES * 100, 100)}%`;
+
+  // Update leaderboard
+  const sorted = racers.slice().sort((a, b) => b.xPos - a.xPos);
+  femaleOL.innerHTML = "";
+  maleOL.innerHTML = "";
+  sorted.forEach(r => {
+    const li = document.createElement("li");
+    li.textContent = r.id;
+    (femaleIDs.includes(r.id) ? femaleOL : maleOL).appendChild(li);
+  });
+
+  // Update temperature chart
+  const mIndex = Math.min(Math.floor(timeTick), dataMap[femaleIDs[0]].length - 1);
+  const femTemps = femaleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
+  const maleTemps = maleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
+  tempChart.data.datasets[0].data = [
+    femTemps.reduce((s, v) => s + v, 0) / femTemps.length,
+    maleTemps.reduce((s, v) => s + v, 0) / maleTemps.length
+  ];
+  tempChart.update('none');
+}
 
 /* ------------------------------------------------------------------ */
 /* 2) buildData                                                       */
@@ -195,12 +244,19 @@ function runCountdown(n){
 /* ------------------------------------------------------------------ */
 /* 6) pause / resume                                                  */
 /* ------------------------------------------------------------------ */
-pauseBtn.addEventListener("click",()=>{
-  if(isRunning){
-    clearInterval(raceTimer); isRunning=false; pauseBtn.textContent="▶️ Resume";
-  }else{
-    raceTimer=setInterval(raceStep,TICK_INTERVAL_MS); isRunning=true;
-    pauseBtn.textContent="⏸ Pause";
+pauseBtn.addEventListener("click", () => {
+  pauseBtn.disabled = false; // ensure it's always clickable
+
+  if (isRunning) {
+    clearInterval(raceTimer);
+    isRunning = false;
+    userPaused = true;
+    pauseBtn.textContent = "▶️ Resume";
+  } else {
+    raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
+    isRunning = true;
+    userPaused = false;
+    pauseBtn.textContent = "⏸ Pause";
   }
 });
 
@@ -396,7 +452,7 @@ function raceStep(){
 /* 10) pop-up helpers                                                 */
 /* ------------------------------------------------------------------ */
 function showPopup(title,body){
-  clearInterval(raceTimer); isRunning=false; pauseBtn.disabled=true;
+  clearInterval(raceTimer); isRunning=false; pauseBtn.disabled=false;
   let o=document.getElementById("message-overlay");
   if(!o){o=document.createElement("div");o.id="message-overlay";document.body.appendChild(o);}
   o.innerHTML=`<h2>${title}</h2><p>${body}<br><br><strong>Click anywhere to continue.</strong></p>`;
@@ -404,10 +460,14 @@ function showPopup(title,body){
   const resume = () => {
     o.classList.add("hidden");
     document.removeEventListener("click", resume);
-    raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
-    isRunning = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = "⏸ Pause";  // <-- ADD THIS LINE
+  
+    // Only resume if the user didn't manually pause
+    if (!userPaused) {
+      raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
+      isRunning = true;
+      pauseBtn.disabled = false;
+      pauseBtn.textContent = "⏸ Pause";
+    }
   };
   
   setTimeout(()=>document.addEventListener("click",resume),500);
