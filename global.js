@@ -1,5 +1,3 @@
-
-
 // ──────────────────────────────────────────────────────────────────────────
 // • 16 racers, 4-day race, live avg-temperature bar chart
 // ──────────────────────────────────────────────────────────────────────────
@@ -16,14 +14,11 @@ const splashModal   = document.getElementById("splash-modal");
 const modalStart    = document.getElementById("modal-start");
 const countdownOverlay = document.getElementById("countdown-overlay");
 const countdownText    = document.getElementById("countdown-text");
-const barCanvas  = document.getElementById("bar-chart");
-const lineCanvas = document.getElementById("line-chart");
-const resetBtn = document.getElementById("reset-button");
-
-
-const nextBtn = document.getElementById("next-popup");
-const backBtn = document.getElementById("back-popup");
-
+const tempCanvas       = document.getElementById("temp-chart");
+const resetBtn        = document.getElementById("reset-button");
+const prevPopupBtn    = document.getElementById("prev-popup-button");
+const nextPopupBtn    = document.getElementById("next-popup-button");
+const progressTextEl = document.getElementById("progress-text");
 /* ---------- data structures ---------- */
 const dataMap = {};
 let femaleIDs=[], maleIDs=[];
@@ -52,40 +47,41 @@ let proestrusPopupShown=false, estrusPopupShown=false,
     observationPopupShown=false, metestrusPopupShown=false,
     diestrusPopupShown=false;
 
-let popupIndex = -1;
-const popupPhases = [
-  { min: PROESTRUS_POPUP_MIN, shown: () => proestrusPopupShown, set: v => proestrusPopupShown = v,
-    title: "🌸 Proestrus Phase 🌸",
-    body: "The estrous cycle is four phases repeating every 4–5 days. <strong>Proestrus</strong> (≈12 h) is the follicle-growth phase." },
-
-  { min: ESTRUS_POPUP_MIN, shown: () => estrusPopupShown, set: v => estrusPopupShown = v,
-    title: "🔥 Estrus Phase 🔥",
-    body: "Peak fertility: female mice become <em>much more active</em> during Estrus!" },
-
-  { min: OBSERVATION_POPUP_MIN, shown: () => observationPopupShown, set: v => observationPopupShown = v,
-    title: "👀 Observation 👀",
-    body: "By now you’ve likely noticed that female mice move less overall—except during Estrus, when they surge in activity. This pattern reflects natural-selection pressures." },
-
-  { min: METESTRUS_POPUP_MIN, shown: () => metestrusPopupShown, set: v => metestrusPopupShown = v,
-    title: "🌗 Metestrus Phase 🌗",
-    body: "Hormone levels fall; activity tapers as the cycle moves toward Diestrus." },
-
-  { min: DIESTRUS_POPUP_MIN, shown: () => diestrusPopupShown, set: v => diestrusPopupShown = v,
-    title: "🌙 Diestrus Phase 🌙",
-    body: "Final low-activity stage before the cycle restarts." }
-];
-
 /* run-state */
 let timeTick=0, raceTimer=null, isRunning=false, lightsOffHandled=false,
     currentTrackWidth=0;
 
-let userPaused = false;
-
-
 /* Chart.js */
 let tempCtx=null, tempChart=null;
-let barChart = null;
-let lineChart = null;
+
+/* Pop ups messages */
+const manualPopups = [
+  {
+    title: "🌸 Proestrus Phase 🌸",
+    body: "The estrous cycle is four phases repeating every 4–5 days. <strong>Proestrus</strong> (≈12 h) is the follicle-growth phase."
+  },
+  {
+    title: "🔥 Estrus Phase 🔥",
+    body: "Peak fertility: female mice become <em>much more active</em> during Estrus!"
+  },
+  {
+    title: "👀 Observation 👀",
+    body: "By now you’ve likely noticed that female mice move less overall—except during Estrus, when they surge in activity. This pattern reflects natural-selection pressures."
+  },
+  {
+    title: "🌗 Metestrus Phase 🌗",
+    body: "Hormone levels fall; activity tapers as the cycle moves toward Diestrus."
+  },
+  {
+    title: "🌙 Diestrus Phase 🌙",
+    body: "Final low-activity stage before the cycle restarts."
+  }
+];
+let currentManualPopupIndex = -1;
+
+/* — cumulative distances for replay slider — */
+const cumulativeDistances = {};
+
 
 /* ──────────────────────────────────────────────────────────────────────────
    1) LOAD CSVs
@@ -102,86 +98,15 @@ Promise.all([
   buildOvulationTimeline();
   updateOvulationScroll(0);
   updateLights();
+  Object.keys(dataMap).forEach(id => {
+      let sum = 0;
+      cumulativeDistances[id] = dataMap[id].map(p => {
+        sum += p.activity * PIXELS_PER_MIN * SIM_MINUTES_PER_TICK;
+        return sum;
+      });
+  });
   modalStart.disabled=false;
 });
-
-/* popup controls */
-nextBtn.addEventListener("click", () => {
-  if (popupIndex < popupPhases.length - 1) {
-    popupIndex++;
-    jumpToPhase(popupIndex);
-  }
-});
-
-backBtn.addEventListener("click", () => {
-  if (popupIndex > 0) {
-    popupIndex--;
-    jumpToPhase(popupIndex);
-  }
-});
-
-function jumpToPhase(index) {
-  const wasRunning = isRunning;
-  // clearInterval(raceTimer);
-  // isRunning = false;
-  // pauseBtn.disabled = false;
-
-// Set pause state so showPopup can respect it
-  userPaused = !wasRunning;
-
-  const phase = popupPhases[index];
-  timeTick = phase.min;
-  // Always pause when jumping to a phase
-  clearInterval(raceTimer);
-  isRunning = false;
-  pauseBtn.disabled = false;
-  pauseBtn.textContent = "▶️ Resume";
-  userPaused = true;  // Mark this as a manual pause
-
-
-  // Reset all runners to correct position at that time
-  racers.forEach(r => {
-    const s = dataMap[r.id];
-    r.minuteIdx = timeTick;
-    r.xPos = 0;
-    for (let i = 0; i < timeTick; i++) {
-      const p = s[i];
-      if (!p) break;
-      r.xPos += p.activity * PIXELS_PER_MIN * SIM_MINUTES_PER_TICK;
-    }
-    r.el.style.left = `${r.xPos}px`;
-  });
-
-  // Mark popup as shown and display it
-  phase.set(true);
-  showPopup(phase.title, phase.body);
-
-  // Update UI elements
-  updateLights();
-  updateOvulationScroll(timeTick);
-  document.getElementById("timeline-progress").style.width =
-    `${Math.min(timeTick / CHOSEN_TOTAL_MINUTES * 100, 100)}%`;
-
-  // Update leaderboard
-  const sorted = racers.slice().sort((a, b) => b.xPos - a.xPos);
-  femaleOL.innerHTML = "";
-  maleOL.innerHTML = "";
-  sorted.forEach(r => {
-    const li = document.createElement("li");
-    li.textContent = r.id;
-    (femaleIDs.includes(r.id) ? femaleOL : maleOL).appendChild(li);
-  });
-
-  // Update temperature chart
-  const mIndex = Math.min(Math.floor(timeTick), dataMap[femaleIDs[0]].length - 1);
-  const femTemps = femaleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
-  const maleTemps = maleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
-  tempChart.data.datasets[0].data = [
-    femTemps.reduce((s, v) => s + v, 0) / femTemps.length,
-    maleTemps.reduce((s, v) => s + v, 0) / maleTemps.length
-  ];
-  tempChart.update('none');
-}
 
 /* ------------------------------------------------------------------ */
 /* 2) buildData                                                       */
@@ -244,7 +169,7 @@ function buildOvulationTimeline(){
 /* 5) splash ▶️ → countdown → beginRace                               */
 /* ------------------------------------------------------------------ */
 modalStart.addEventListener("click",()=>{
-  if(modalStart.disabled)return;
+  if(modalStart.disabled) return;
   splashModal.style.display="none";
   countdownOverlay.classList.remove("hidden");
   runCountdown(3).then(()=>{
@@ -265,155 +190,175 @@ function runCountdown(n){
 /* ------------------------------------------------------------------ */
 /* 6) pause / resume                                                  */
 /* ------------------------------------------------------------------ */
-pauseBtn.addEventListener("click", () => {
-  pauseBtn.disabled = false; // ensure it's always clickable
-
-  if (isRunning) {
-    clearInterval(raceTimer);
-    isRunning = false;
-    userPaused = true;
-    pauseBtn.textContent = "▶️ Resume";
-  } else {
-    raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
-    isRunning = true;
-    userPaused = false;
-    pauseBtn.textContent = "⏸ Pause";
+pauseBtn.addEventListener("click",()=>{
+  if(isRunning){
+    clearInterval(raceTimer); isRunning=false; pauseBtn.textContent="▶️ Resume";
+  }else{
+    raceTimer=setInterval(raceStep,TICK_INTERVAL_MS); isRunning=true;
+    pauseBtn.textContent="⏸ Pause";
   }
 });
-
-resetBtn.addEventListener("click", () => {
-  clearInterval(raceTimer);
-  isRunning = false;
-  userPaused = true;
-  popupIndex = -1;
-
-  // Reset simulation time and flags
-  timeTick = 0;
-  proestrusPopupShown = estrusPopupShown =
-    observationPopupShown = metestrusPopupShown = diestrusPopupShown = false;
-  lightsOffHandled = false;
-
-  // Hide popup overlay if showing
-  const overlay = document.getElementById("message-overlay");
-  if (overlay) overlay.classList.add("hidden");
-
-  // Update pause button
-  pauseBtn.textContent = "▶️ Resume";
-  pauseBtn.disabled = false;
-  document.getElementById("timeline-progress").style.width = "0%";
-
-  // Reset leaderboard
-  femaleOL.innerHTML = "";
-  maleOL.innerHTML = "";
-
-  // Reset mouse positions
-  racers.forEach(r => {
-    r.xPos = 0;
-    r.minuteIdx = 0;
-    if (r.el) r.el.style.left = "0px";
-  });
-
-  // Reset charts
-  if (lineChart) {
-    lineChart.data.labels = [];
-    lineChart.data.datasets.forEach(d => d.data = []);
-    lineChart.update();
-  }
-
-  if (barChart) {
-    barChart.data.datasets[0].data = [36, 36];  // or initial avg
-    barChart.data.datasets[0].backgroundColor = ['#ff9ccd', '#7ec6ff'];
-    barChart.update();
-  }
-
-  // Reset ovulation scroll and light state
-  updateOvulationScroll(0);
-  updateLights();
-});
-
-
 
 /* ------------------------------------------------------------------ */
 /* 7) beginRace                                                       */
 /* ------------------------------------------------------------------ */
 function beginRace(){
-
-  const barCtx  = document.getElementById("bar-chart").getContext("2d");
-const lineCtx = document.getElementById("line-chart").getContext("2d");
-
-if (barChart) barChart.destroy();
-if (lineChart) lineChart.destroy();
-
-barChart = new Chart(barCtx, {
-  type: 'bar',
-  data: {
-    labels: ['Female', 'Male'],
-    datasets: [{
-      label: 'Avg Temp (Bar)',
-      backgroundColor: ['#ff9ccd', '#7ec6ff'],
-      data: [36, 36],
-    }]
-  },
-  options: {
-    animation: false,
-    scales: { y: { min: 30, max: 40, title: { display: true, text: '°C' } } },
-    plugins: { legend: { display: false } }
-  }
-});
-
-lineChart = new Chart(lineCtx, {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [
-      {
-        label: 'Female Avg Temp',
-        data: [],
-        borderColor: '#ff80c0',
-        fill: false,
-        tension: 0.2
-      },
-      {
-        label: 'Male Avg Temp',
-        data: [],
-        borderColor: '#7ec6ff',
-        fill: false,
-        tension: 0.2
-      }
-    ]
-  },
-  options: {
-    animation: false,
-    scales: {
-      y: {
-        min: 30,
-        max: 40,
-        title: { display: true, text: 'Temperature (°C)' }
-      },
-      x: {
-        title: { display: true, text: 'Minute' }
-      }
+  /* canvas ctx & chart */
+  if(!tempCtx) tempCtx=tempCanvas.getContext("2d");
+  if(tempChart) tempChart.destroy();
+  tempChart=new Chart(tempCtx,{
+    type:'bar',
+    data:{
+      labels:['Female','Male'],
+      datasets:[{
+        backgroundColor:['#ff9ccd','#7ec6ff'],  // night shades
+        borderWidth:0,
+        data:[36,36]
+      }]
+    },
+    options:{
+      animation:false,
+      scales:{y:{min:30,max:40,title:{display:true,text:'°C'}}},
+      plugins:{legend:{display:false}}
     }
-  }
-});
-
-
+  });
 
   /* reset flags/state */
-  timeTick=0;
-  proestrusPopupShown=estrusPopupShown=
-  observationPopupShown=metestrusPopupShown=diestrusPopupShown=false;
-  lightsOffHandled=false;
+  timeTick = 0;
+  proestrusPopupShown = estrusPopupShown =
+  observationPopupShown = metestrusPopupShown = diestrusPopupShown = false;
+  lightsOffHandled = false;
+  currentManualPopupIndex = -1;
 
   racers.forEach(r=>{r.xPos=0;r.minuteIdx=0;});
   femaleOL.innerHTML=""; maleOL.innerHTML="";
+
   setupRacers();
   document.getElementById("timeline-progress").style.width="0%";
-  updateOvulationScroll(0); updateLights();
-  pauseBtn.disabled=false; pauseBtn.textContent="⏸ Pause";
-  document.getElementById("message-overlay")?.classList.add("hidden");
-  isRunning=true; raceTimer=setInterval(raceStep,TICK_INTERVAL_MS);
+  updateOvulationScroll(0);
+  updateLights();
+
+  // enable controls
+  pauseBtn.disabled       = false;
+  resetBtn.disabled       = false;
+  prevPopupBtn.disabled   = true;   // none shown yet
+  nextPopupBtn.disabled   = false;
+  pauseBtn.textContent    = "⏸ Pause";
+
+  // attach listeners (only once)
+  resetBtn.onclick = resetRace;
+  prevPopupBtn.onclick = ()=> showManualPopup(currentManualPopupIndex - 1);
+  nextPopupBtn.onclick = ()=> {
+    if (currentManualPopupIndex < manualPopups.length - 1) {
+      showManualPopup(currentManualPopupIndex + 1);
+    } else {
+      // last phase → compute and show finish
+      const sorted = racers.slice().sort((a,b) => b.xPos - a.xPos);
+      showFinishPopup(sorted);
+    }
+  };
+  // start
+  isRunning = true;
+  raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
 }
+function resetRace(){
+  clearInterval(raceTimer);
+  isRunning = false;
+  pauseBtn.disabled         = true;
+  resetBtn.disabled         = true;
+  prevPopupBtn.disabled     = true;
+  nextPopupBtn.disabled     = true;
+
+  // hide overlays
+  countdownOverlay.classList.add("hidden");
+  document.getElementById("message-overlay")?.classList.add("hidden");
+
+  splashModal.style.display = "flex";
+}
+/* ------------------------------------------------------------------ */
+/* manual pop-up navigator                                          */
+/* ------------------------------------------------------------------ */
+function showManualPopup(idx) {
+  if (idx < 0 || idx >= manualPopups.length) return;
+
+  // ─── mark this phase so auto‐triggers never fire again ───
+  switch (idx) {
+    case 0: proestrusPopupShown = true; break;
+    case 1: estrusPopupShown    = true; break;
+    case 2: observationPopupShown = true; break;
+    case 3: metestrusPopupShown = true; break;
+    case 4: diestrusPopupShown  = true; break;
+  }
+
+  currentManualPopupIndex = idx;
+
+  // 1) Pause & scrub to this phase
+  clearInterval(raceTimer);
+  isRunning = false;
+  const phaseTimes = [
+    PROESTRUS_POPUP_MIN,
+    ESTRUS_POPUP_MIN,
+    OBSERVATION_POPUP_MIN,
+    METESTRUS_POPUP_MIN,
+    DIESTRUS_POPUP_MIN
+  ];
+  updateRaceTo(phaseTimes[idx]);
+
+  // 2) Top‐bar nav buttons
+  prevPopupBtn.disabled = (idx === 0);
+  nextPopupBtn.disabled = false;
+  resetBtn.disabled     = false;
+  nextPopupBtn.onclick  = () => {
+    if (idx < manualPopups.length - 1) {
+      showManualPopup(idx + 1);
+    } else {
+      const sorted = racers.slice().sort((a, b) => b.xPos - a.xPos);
+      showFinishPopup(sorted);
+    }
+  };
+
+  // 3) Build & show the overlay
+  const { title, body } = manualPopups[idx];
+  let o = document.getElementById("message-overlay");
+  if (!o) {
+    o = document.createElement("div");
+    o.id = "message-overlay";
+    document.body.appendChild(o);
+  }
+  o.innerHTML = `
+    <h2>${title}</h2>
+    <p>${body}</p>
+    <div class="overlay-buttons">
+      <button id="overlay-prev" ${idx === 0 ? "disabled" : ""}>◀️ Prev</button>
+      <button id="overlay-close">✖️ Close</button>
+      <button id="overlay-next">▶️ Next</button>
+    </div>
+  `;
+  o.classList.remove("hidden");
+
+  // 4) Overlay controls
+  document.getElementById("overlay-prev").onclick = () =>
+    showManualPopup(idx - 1);
+
+  document.getElementById("overlay-close").onclick = () => {
+    o.classList.add("hidden");
+    raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
+    isRunning = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = "⏸ Pause";
+  };
+
+  document.getElementById("overlay-next").onclick = () => {
+    o.classList.add("hidden");
+    if (idx < manualPopups.length - 1) {
+      showManualPopup(idx + 1);
+    } else {
+      const sorted = racers.slice().sort((a, b) => b.xPos - a.xPos);
+      showFinishPopup(sorted);
+    }
+  };
+}
+
 
 /* ------------------------------------------------------------------ */
 /* 8) build track lines & sprites                                     */
@@ -484,144 +429,213 @@ function ensureTrackWidth(minX){
   laneLines.forEach(l=>{l.style.width=`${currentTrackWidth}px`;});
 }
 
-function raceStep() {
-  // Move each mouse one simulated minute
-  racers.forEach(r => {
-    if (r.minuteIdx >= CHOSEN_TOTAL_MINUTES) return;
-    const idx = Math.floor(r.minuteIdx);
-    const p = dataMap[r.id][idx]; if (!p) return;
-    const v = p.activity * PIXELS_PER_MIN;
-    r.xPos += v * SIM_MINUTES_PER_TICK;
-    r.minuteIdx += SIM_MINUTES_PER_TICK;
-    anime({ targets: r.el, left: `${r.xPos}px`, duration: 45, easing: "linear" });
+function raceStep(){
+  /* move each mouse one simulated minute --------------------------- */
+  racers.forEach(r=>{
+    if(r.minuteIdx>=CHOSEN_TOTAL_MINUTES) return;
+    const idx=Math.floor(r.minuteIdx);
+    const p=dataMap[r.id][idx]; if(!p) return;
+    const v=p.activity*PIXELS_PER_MIN;
+    r.xPos+=v*SIM_MINUTES_PER_TICK;
+    r.minuteIdx+=SIM_MINUTES_PER_TICK;
+    anime({targets:r.el,left:`${r.xPos}px`,duration:45,easing:"linear"});
   });
-  timeTick += SIM_MINUTES_PER_TICK;
+  timeTick+=SIM_MINUTES_PER_TICK;
+  //update time text
+  progressTextEl.textContent =
+  `Progress: ${timeTick} / ${CHOSEN_TOTAL_MINUTES} min`;
 
-  // Update lights, progress bar, ovulation scroll
+  /* update lights, progress bar, ovulation scroll ------------------ */
   updateLights();
-  document.getElementById("timeline-progress").style.width =
-    `${Math.min(timeTick / CHOSEN_TOTAL_MINUTES * 100, 100)}%`;
+  document.getElementById("timeline-progress").style.width=
+      `${Math.min(timeTick/CHOSEN_TOTAL_MINUTES*100,100)}%`;
   updateOvulationScroll(timeTick);
 
-  // Live rankings
-  const sorted = racers.slice().sort((a, b) => b.xPos - a.xPos);
-  femaleOL.innerHTML = "";
-  maleOL.innerHTML = "";
-  sorted.forEach(r => {
-    const li = document.createElement("li");
-    li.textContent = r.id;
-    (femaleIDs.includes(r.id) ? femaleOL : maleOL).appendChild(li);
+  /* live rankings --------------------------------------------------- */
+  const sorted = racers.slice().sort((a,b)=>b.xPos-a.xPos);
+  femaleOL.innerHTML=""; maleOL.innerHTML="";
+  sorted.forEach(r=>{
+    const li=document.createElement("li"); li.textContent=r.id;
+    (femaleIDs.includes(r.id)?femaleOL:maleOL).appendChild(li);
   });
 
-  // Auto-scroll
-  const avgX = racers.reduce((s, r) => s + r.xPos, 0) / racers.length;
+  /* auto-scroll view ------------------------------------------------ */
+  raceWrapper.scrollLeft = 0;
+
+  // still grow the track width so nobody ever gets cut off
+  const avgX = racers.reduce((sum, r) => sum + r.xPos, 0) / racers.length;
   raceWrapper.scrollLeft = Math.max(0, avgX - raceWrapper.clientWidth / 2);
   ensureTrackWidth(avgX + raceWrapper.clientWidth);
 
-  // Temperature data
-  const mIndex = Math.min(Math.floor(timeTick), dataMap[femaleIDs[0]].length - 1);
-  const femTemps = femaleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
-  const maleTemps = maleIDs.map(id => dataMap[id][mIndex].temperature).filter(v => !isNaN(v));
-  const femAvg = femTemps.length ? femTemps.reduce((s, v) => s + v, 0) / femTemps.length : 0;
-  const maleAvg = maleTemps.length ? maleTemps.reduce((s, v) => s + v, 0) / maleTemps.length : 0;
-
-  
-  barChart.data.datasets[0].data = [
-    femTemps.reduce((s, v) => s + v, 0) / femTemps.length,
-    maleTemps.reduce((s, v) => s + v, 0) / maleTemps.length
+  /* ---- live average-temperature bars ----------------------------- */
+  const mIndex=Math.min(Math.floor(timeTick),dataMap[femaleIDs[0]].length-1);
+  const femTemps=femaleIDs.map(id=>dataMap[id][mIndex].temperature).filter(v=>!isNaN(v));
+  const maleTemps=maleIDs.map(id=>dataMap[id][mIndex].temperature).filter(v=>!isNaN(v));
+  tempChart.data.datasets[0].data=[
+    femTemps.reduce((s,v)=>s+v,0)/femTemps.length,
+    maleTemps.reduce((s,v)=>s+v,0)/maleTemps.length
   ];
-  barChart.update('none');
-
-
-  lineChart.data.labels.push(timeTick);
-  lineChart.data.datasets[0].data.push(femAvg);  // Female
-  lineChart.data.datasets[1].data.push(maleAvg); // Male
-  lineChart.update('none');
-  
-  // Pop-ups
+  tempChart.update('none');
   if (!proestrusPopupShown && timeTick >= PROESTRUS_POPUP_MIN) {
     proestrusPopupShown = true;
-    showPopup("🌸 Proestrus Phase 🌸",
-      "The estrous cycle is four phases repeating every 4–5 days. " +
-      "<strong>Proestrus</strong> (≈12 h) is the follicle-growth phase.");
+    currentManualPopupIndex = 0;
+    showManualPopup(0);
+    return;
   }
   if (!estrusPopupShown && timeTick >= ESTRUS_POPUP_MIN) {
     estrusPopupShown = true;
-    showPopup("🔥 Estrus Phase 🔥",
-      "Peak fertility: female mice become <em>much more active</em> during Estrus!");
+    currentManualPopupIndex = 1;
+    showManualPopup(1);
+    return;
   }
   if (!observationPopupShown && timeTick >= OBSERVATION_POPUP_MIN) {
     observationPopupShown = true;
-    showPopup("👀 Observation 👀",
-      "By now you’ve likely noticed that female mice move less overall—" +
-      "except during Estrus, when they surge in activity. " +
-      "This pattern reflects natural-selection pressures.");
+    currentManualPopupIndex = 2;
+    showManualPopup(2);
+    return;
   }
   if (!metestrusPopupShown && timeTick >= METESTRUS_POPUP_MIN) {
     metestrusPopupShown = true;
-    showPopup("🌗 Metestrus Phase 🌗",
-      "Hormone levels fall; activity tapers as the cycle moves toward Diestrus.");
+    currentManualPopupIndex = 3;
+    showManualPopup(3);
+    return;
   }
   if (!diestrusPopupShown && timeTick >= DIESTRUS_POPUP_MIN) {
     diestrusPopupShown = true;
-    showPopup("🌙 Diestrus Phase 🌙",
-      "Final low-activity stage before the cycle restarts.");
+    currentManualPopupIndex = 4;
+    showManualPopup(4);
+    return;
   }
-
-  // Finish
-  if (timeTick >= CHOSEN_TOTAL_MINUTES) {
-    clearInterval(raceTimer);
-    isRunning = false;
-    pauseBtn.disabled = true;
+  /* finish flag ----------------------------------------------------- */
+  if(timeTick>=CHOSEN_TOTAL_MINUTES){
+    clearInterval(raceTimer); isRunning=false; pauseBtn.disabled=true;
     showFinishPopup(sorted);
   }
 }
-
 
 /* ------------------------------------------------------------------ */
 /* 10) pop-up helpers                                                 */
 /* ------------------------------------------------------------------ */
 function showPopup(title,body){
-  clearInterval(raceTimer); isRunning=false; pauseBtn.disabled=false;
+  clearInterval(raceTimer); isRunning=false; pauseBtn.disabled=true;
   let o=document.getElementById("message-overlay");
   if(!o){o=document.createElement("div");o.id="message-overlay";document.body.appendChild(o);}
   o.innerHTML=`<h2>${title}</h2><p>${body}<br><br><strong>Click anywhere to continue.</strong></p>`;
   o.classList.remove("hidden");
-  const resume = () => {
-    o.classList.add("hidden");
-    document.removeEventListener("click", resume);
-  
-    // Only resume if the user didn't manually pause
-    if (!userPaused) {
-      raceTimer = setInterval(raceStep, TICK_INTERVAL_MS);
-      isRunning = true;
-      pauseBtn.disabled = false;
-      pauseBtn.textContent = "⏸ Pause";
-    }
+  const resume=()=>{
+    o.classList.add("hidden");document.removeEventListener("click",resume);
+    raceTimer=setInterval(raceStep,TICK_INTERVAL_MS); isRunning=true; pauseBtn.disabled=false;
   };
-  
   setTimeout(()=>document.addEventListener("click",resume),500);
 }
+function showFinishPopup(sorted) {
+  const females = sorted
+    .filter(r => femaleIDs.includes(r.id))
+    .map(r => r.id);
+  const males = sorted
+    .filter(r => maleIDs.includes(r.id))
+    .map(r => r.id);
 
-function showFinishPopup(sorted){
-  const females=sorted.filter(r=>femaleIDs.includes(r.id)).map(r=>r.id);
-  const males  =sorted.filter(r=>maleIDs.includes(r.id)).map(r=>r.id);
+  let o = document.getElementById("message-overlay");
+  if (!o) {
+    o = document.createElement("div");
+    o.id = "message-overlay";
+    document.body.appendChild(o);
+  }
 
-  let html="<h2>🎉 Finished! 🎉</h2>"+
-           "<p>Thank you for taking the time to go through this visual, and the final rankings are below.</p>"+
-           "<div style='display:flex;gap:2em;justify-content:center;margin-top:1.2em'>";
-  html+="<div><h3>Female</h3><ol>";
-  females.forEach(id=>{html+=`<li>${id}</li>`;});
-  html+="</ol></div><div><h3>Male</h3><ol>";
-  males.forEach(id=>{html+=`<li>${id}</li>`;});
-  html+="</ol></div></div>";
-
-  let o=document.getElementById("message-overlay");
-  if(!o){o=document.createElement("div");o.id="message-overlay";document.body.appendChild(o);}
-  o.innerHTML=html;
+  o.innerHTML = `
+    <h2>🎉 Finished! 🎉</h2>
+    <p>Thank you for taking the time to go through this visual; here are the final rankings:</p>
+    <div style="display:flex; gap:2em; justify-content:center; margin-top:1.2em">
+      <div>
+        <h3>Female</h3>
+        <ol>${females.map(id => `<li>${id}</li>`).join("")}</ol>
+      </div>
+      <div>
+        <h3>Male</h3>
+        <ol>${males.map(id => `<li>${id}</li>`).join("")}</ol>
+      </div>
+    </div>
+    <div class="overlay-buttons" style="margin-top:1em; text-align:center">
+      <button id="overlay-prev">◀️ Prev</button>
+      <button id="overlay-close">✖️ Close</button>
+      <button id="overlay-next" disabled>▶️ Next</button>
+      <button id="overlay-restart">🔄 Restart</button>
+    </div>
+  `;
   o.classList.remove("hidden");
+
+  // Prev → go back to the last phase popup
+  document.getElementById("overlay-prev").onclick = () => {
+    currentManualPopupIndex = manualPopups.length - 1;
+    showManualPopup(currentManualPopupIndex);
+  };
+
+  // Close → just hide the overlay
+  document.getElementById("overlay-close").onclick = () => {
+    o.classList.add("hidden");
+  };
+
+  // Next is disabled—no handler
+
+  // Restart → reset everything back to the splash screen
+  document.getElementById("overlay-restart").onclick = () => {
+    o.classList.add("hidden");
+    resetRace();
+  };
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   replay helper: jump-to–timeTick, updates everything
+   ────────────────────────────────────────────────────────────────────────── */
+   function updateRaceTo(minIdx){
+    clearInterval(raceTimer);
+    isRunning = false;
+    pauseBtn.disabled = true;
+    timeTick = minIdx;
+    progressTextEl.textContent =
+    `Progress: ${timeTick} / ${CHOSEN_TOTAL_MINUTES} min`;
+    // update timeline & scroll
+    document.getElementById("timeline-progress").style.width =
+      `${Math.min(timeTick/CHOSEN_TOTAL_MINUTES*100,100)}%`;
+    updateOvulationScroll(timeTick);
+  
+    // update temperature chart
+    const mIndex = Math.min(Math.floor(timeTick), dataMap[femaleIDs[0]].length - 1);
+    const femTemps = femaleIDs.map(id=>dataMap[id][mIndex].temperature).filter(v=>!isNaN(v));
+    const maleTemps = maleIDs.map(id=>dataMap[id][mIndex].temperature).filter(v=>!isNaN(v));
+    tempChart.data.datasets[0].data = [
+      femTemps.reduce((s,v)=>s+v,0)/femTemps.length,
+      maleTemps.reduce((s,v)=>s+v,0)/maleTemps.length
+    ];
+    tempChart.update("none");
+  
+    // update each racer’s position
+    racers.forEach(r=>{
+      const idx = Math.min(Math.floor(minIdx), cumulativeDistances[r.id].length - 1);
+      r.minuteIdx = idx;
+      r.xPos      = cumulativeDistances[r.id][idx];
+      r.el.style.left = `${r.xPos}px`;
+    });
+    // update leaderboards
+    const sorted = racers.slice().sort((a,b)=>b.xPos - a.xPos);
+    femaleOL.innerHTML=""; maleOL.innerHTML="";
+    sorted.forEach(r=>{
+      const li = document.createElement("li");
+      li.textContent = r.id;
+      (femaleIDs.includes(r.id) ? femaleOL : maleOL).appendChild(li);
+    });
+    // update lights on/off
+    updateLights();
+
+      // auto-scroll to center the pack
+      raceWrapper.scrollLeft = 0;
+
+      // still grow the track width so nobody ever gets cut off
+      const avgX = racers.reduce((sum, r) => sum + r.xPos, 0) / racers.length;
+      raceWrapper.scrollLeft = Math.max(0, avgX - raceWrapper.clientWidth / 2);
+      ensureTrackWidth(avgX + raceWrapper.clientWidth);
+  }
 /* ------------------------------------------------------------------ */
 /* 11) ovulation scroll                                               */
 /* ------------------------------------------------------------------ */

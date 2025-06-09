@@ -29,13 +29,15 @@
   <div id="main-content">
 
     <!-- CONTROLS -->
-    <div class="action-row">
-      <button id="back-popup">⏮ Back</button>
-      <button id="pause-button" disabled>⏸ Pause</button>
-      <button id="next-popup">⏭ Next</button>
-      <button id="reset-button">🔁 Reset</button>
-    </div>
-    
+    <section id="controls">
+      <div class="action-row">
+        <h2 class="race-title">Mouse Race</h2>
+        <button id="pause-button" disabled>⏸ Pause</button>
+        <button id="reset-button" disabled>🔄 Reset Race</button>
+        <button id="prev-popup-button" disabled>◀️ Previous</button>
+        <button id="next-popup-button" disabled>▶️ Next</button>
+      </div>
+    </section>
 
     <!-- COUNTDOWN OVERLAY -->
     <div id="countdown-overlay" class="hidden">
@@ -49,26 +51,33 @@
 
     <!-- OVULATION TIMELINE -->
     <section id="timeline-section">
+      <div id="progress-text">Progress: 0 / 5760&nbsp;min</div>
       <div id="timeline-bar"><div id="timeline-progress"></div></div>
       <div id="ovulation-wrapper"><div id="ovulation-timeline"></div></div>
     </section>
 
     <!-- LEADERBOARDS + TEMPERATURE CHART -->
     <section id="info-panel">
-      <div id="leaderboards">
-        <div id="female-leaderboard"><h3>Female Rankings</h3><ol></ol></div>
-        <div id="male-leaderboard"><h3>Male Rankings</h3><ol></ol></div>
+      <!-- Leaderboard panel -->
+      <div class="panel" id="leaderboard-panel">
+        <h3>Current Leaderboard</h3>
+        <div id="leaderboards">
+          <div id="female-leaderboard">
+            <h4>Female Rankings</h4>
+            <ol></ol>
+          </div>
+          <div id="male-leaderboard">
+            <h4>Male Rankings</h4>
+            <ol></ol>
+          </div>
+        </div>
       </div>
-
-      <!-- Average core-temperature chart -->
-      <!-- Inside your index.html -->
-      <div id="chart-wrapper" style="display: flex; gap: 2em; justify-content: center;">
-        <canvas id="bar-chart" ></canvas>
-        <canvas id="line-chart"></canvas>
+    
+      <!-- Temperature panel -->
+      <div class="panel" id="avg-temp-panel">
+        <h3>Current Avg Temperature</h3>
+        <canvas id="temp-chart"></canvas>
       </div>
-      
-
-
     </section>
   </div>
 

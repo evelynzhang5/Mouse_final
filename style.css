@@ -8,11 +8,7 @@ body{
   color:#000;
   transition:background .3s,color .3s;
 }
-.hidden {
-  display: none !important;
-  pointer-events: none !important;
-}
-
+.hidden{display:none;}
 
 /* ---------------------------------- */
 /*             LIGHTS OFF (day)       */
@@ -50,7 +46,7 @@ header{background:#333;border-color:#888;}
 #timeline-bar{background:#555;}
 .ov-tick{border-color:#555;}
 #leaderboards>div{border-color:#888;background:#333;}
-#race-container{background:#333;}
+#race-container{background:#333; height: 60vh;position: relative;}
 
 /* ---------------------------------- */
 /*            MODAL POP-UP            */
@@ -77,7 +73,7 @@ header{background:#333;border-color:#888;}
 /* ---------------------------------- */
 #controls{width:100%;padding:0 1em;}
 .action-row{
-  display:flex;flex-wrap:wrap;gap:.5em;justify-content:center;margin-bottom:1em;
+  display:flex;flex-wrap:wrap;gap:.5em; align-items:center; 
 }
 .action-row button{
   font-family:inherit;font-size:.95rem;padding:.5em .8em;
@@ -109,28 +105,54 @@ header{background:#333;border-color:#888;}
 #message-overlay h2{margin:0;font-size:2.5rem;}
 #message-overlay p {margin-top:.5em;font-size:1.5rem;}
 
+#message-overlay .overlay-buttons {
+  display: flex;
+  gap: 1em;
+  margin-top: 1em;
+}
+#message-overlay .overlay-buttons button {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: .5em 1em;
+  border: 2px solid #fff;
+  background: #555;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#message-overlay .overlay-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 /* ---------------------------------- */
 /*             RACETRACK              */
 /* ---------------------------------- */
-#race-wrapper{display:flex;justify-content:center;margin:0;overflow-x:auto;}
-#race-container{position:relative;height:100vh;background:#333;}
+#race-wrapper{display:flex;justify-content:center;margin:0;overflow-x:auto; width: 100%}
+#race-container{position:relative;height:57vh;background:#333;}
 .racer-track{position:absolute;left:0;height:1px;}
 .racer{
   position:absolute;display:flex;flex-direction:row-reverse;
   align-items:center;gap:12px;pointer-events:auto;
 }
 .mouse-body{
-  width:50px;height:50px;border:2px solid #000;border-radius:50%;
+  width:34px;height:34px;border:2px solid #000;border-radius:50%;
 }
 .racer-label{font-size:.9rem;white-space:nowrap;color:inherit;}
 
 /* ---------------------------------- */
 /*           TIMELINE & OVULATION     */
 /* ---------------------------------- */
-#timeline-section{width:100%;text-align:center;margin:1em 0;}
-#timeline-bar{height:10px;background:#ddd;position:relative;margin-bottom:.6em;}
-#timeline-progress{height:100%;background:#000;width:0%;transition:width .1s linear;}
-
+#timeline-section{width:100%;text-align:center;margin:0.5em 0;}
+#timeline-bar{height:10px;background:#ddd;position:relative;margin-bottom:.4em;}
+#timeline-progress{height:100%;background:#000;width:0%;transition:width 5ms linear;}
+#progress-text {
+  padding-left: 0.5em;
+  font-size: 0.7rem;
+  text-align: left;
+  margin-bottom: 0.3em;
+}
 #ovulation-wrapper{width:100%;overflow:hidden;}
 #ovulation-timeline{display:flex;position:relative;width:400%;height:20px;}
 .ov-day{flex:0 0 25%;height:20px;}
@@ -146,45 +168,57 @@ header{background:#333;border-color:#888;}
 /* ---------------------------------- */
 /*           LIVE LEADERBOARDS        */
 /* ---------------------------------- */
-#leaderboards{
-  display:flex;gap:2em;justify-content:center;margin:2em 0;
-}
-#leaderboards>div{
-  width:200px;border:2px solid #000;background:#151515;padding:.6em 1em;
-}
-#leaderboards h3{margin:0 0 .5em 0;text-align:center;font-size:1.05rem;}
-#leaderboards ol{margin:0;padding-left:1.2em;}
-
-/* ---------------------------------- */
-/*      LIVE AVERAGE-TEMPERATURE BAR  */
-/* ---------------------------------- */
-/* #temp-chart{display:block;margin:2em auto;} */
-/* Add this near your existing styles */
-
-#chart-wrapper {
+#info-panel {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 2em;
-  flex-wrap: wrap;
-  margin: 2em auto;
-  max-width: 1200px;
-  padding: 1em;
+  justify-content: center;   /* center the two panels as a group */
+  align-items: flex-start;   /* align both panel tops */
+  width: 100%;
+  margin: 1.5em 0;
 }
 
-.chart-box {
-  flex: 1 1 45%;
-  min-width: 350px;
-  background: #fff;
+/* ─── PANEL (shared) ─────────────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;       /* center headings and content */
+}
+
+/* ─── LEADERBOARD GRID ───────────────────────────────────────────────── */
+#leaderboards {
+  display: flex;
+  gap: 1em;
+  width: 50%
+}
+#leaderboards > div {
+  width: 200px;
   border: 2px solid #000;
-  padding: 1em;
-  box-sizing: border-box;
+  background: #151515;
+  padding: .6em 1em;
+}
+#leaderboards h4 {
+  margin: 0 0 .5em;
+  text-align: center;
+  font-size: 1rem;
 }
 
-#bar-chart,
-#line-chart {
+/* ─── AVG-TEMP PANEL ─────────────────────────────────────────────────── */
+#avg-temp-panel {
+  /* same height as leaderboard panel, but narrow */
+  width: 50%;
+  max-width: 400px;
+}
+#avg-temp-panel h3 {
+  margin: 0 0 .5em;
+  text-align: center;
+  font-size: 1.1rem;
+}
+#avg-temp-panel canvas {
   width: 100% !important;
-  height: auto !important;
-  background: #fff;
-  border: 2px solid #000;
+  height: 200px !important;
+  display: block;
+}
+#leaderboard-panel > h3,
+#avg-temp-panel > h3 {
+  text-align: center;
+  margin: 0 0 0.75em;
 }
